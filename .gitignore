@@ -1,0 +1,13 @@
+Scripts
+*/site-packages/*
+*/dist/*
+*/build/*
+.ipynb_checkpoints
+*.pyc
+__pycache__
+*.egg-info
+share/*
+etc
+pyvenv.cfg
+
+scripts
