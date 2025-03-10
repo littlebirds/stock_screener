@@ -23,10 +23,12 @@ def get_basic_info(ticker: str) -> Optional[Dict[str, Any]]:
         return existing.info
     
     logger.debug("Company information for '%s' is outdated. Fetching from Yahoo Finance...", ticker)
-    try:
-        stock = yf.Ticker(ticker)
-    except Exception as e:
-        time.sleep(1)
+    while True:
+        try:
+            stock = yf.Ticker(ticker)
+            break
+        except Exception as e:
+            time.sleep(1)
     if not stock or not hasattr(stock, 'info'):
         logger.warning("%s does not have company infroamtion in yahoo finance", ticker)
         return None
@@ -49,7 +51,7 @@ def spy_components() -> List[str]:
         if not fields:
             continue
         ticker = row.find_all('td')[1].text.upper()
-        if ticker == 'BRK.B':
+        if ticker == 'BRK.B' or ticker == 'BF.B':
             continue
         result.append(ticker.upper())
     return result
