@@ -1,6 +1,6 @@
 from functools import reduce
 
-MEASURES_BY_CATEGORY = {
+FA_INDICATORS_BY_CATEGORY = {
     'Price and Market Data': [
         'currentPrice',
         'previousClose',
@@ -14,36 +14,36 @@ MEASURES_BY_CATEGORY = {
         'regularMarketPrice',
         'regularMarketChange',
         'regularMarketChangePercent',
-        'fiftyTwoWeekLow',
-        'fiftyTwoWeekHigh',
-        'fiftyTwoWeekLowChange',
-        'fiftyTwoWeekLowChangePercent',
-        'fiftyTwoWeekHighChange',
-        'fiftyTwoWeekHighChangePercent',
-        'fiftyTwoWeekRange',
-        'fiftyTwoWeekChangePercent',
-        'fiftyDayAverage',
-        'twoHundredDayAverage',
-        'fiftyDayAverageChange',
-        'fiftyDayAverageChangePercent',
-        'twoHundredDayAverageChange',
-        'twoHundredDayAverageChangePercent'
+        'fiftyTwoWeekLow => Low_52weeks',
+        'fiftyTwoWeekHigh => High_52weeks',
+        'fiftyTwoWeekLowChange => ΔLow_52weeks',
+        'fiftyTwoWeekLowChangePercent => ΔLow%_52weeks',
+        'fiftyTwoWeekHighChange => ΔHigh_52weeks',
+        'fiftyTwoWeekHighChangePercent => ΔHigh%_52weeks',
+        'fiftyTwoWeekRange => Range_52weeks',
+        'fiftyTwoWeekChangePercent => Δ52weeks',
+        'fiftyDayAverage => MA50',
+        'twoHundredDayAverage => MA250',
+        'fiftyDayAverageChange => ΔMA50',
+        'fiftyDayAverageChangePercent => ΔMA50%',
+        'twoHundredDayAverageChange => ΔMA250',
+        'twoHundredDayAverageChangePercent => ΔMA250%',
     ],
     'Volume and Liquidity': [
         'volume',
         'regularMarketVolume',
         'averageVolume',
-        'averageVolume10days',
-        'averageDailyVolume10Day',
-        'averageDailyVolume3Month'
+        'averageVolume10days => avgVolume10d',
+        'averageDailyVolume10Day => avgDailyVolume10d',
+        'averageDailyVolume3Month => avgDailyVolume3M'
     ],
     'Valuation Metrics': [
         'marketCap',
         'trailingPE',
         'forwardPE',
         'priceToSalesTrailing12Months',
-        'priceToBook',
-        'enterpriseValue',
+        'priceToBook => P/B',
+        'enterpriseValue => EV',
         'enterpriseToRevenue',
         'enterpriseToEbitda',
         'trailingPegRatio'
@@ -67,14 +67,14 @@ MEASURES_BY_CATEGORY = {
         'grossMargins',
         'ebitdaMargins',
         'operatingMargins',
-        'returnOnAssets',
-        'returnOnEquity',
+        'returnOnAssets => ROA',
+        'returnOnEquity => ROE',
         'profitMargins'
     ],
     'Dividends and Payouts': [
         'payoutRatio',
         'trailingAnnualDividendRate',
-        'trailingAnnualDividendYield'
+        'trailingAnnualDividendYield => trailingDivYield'
     ],
     'Analyst Opinions and Targets': [
         'targetHighPrice',
@@ -100,8 +100,16 @@ MEASURES_BY_CATEGORY = {
         'totalCash',
         'totalCashPerShare',
         'ebitda',
-        'totalDebt',
+        'totalDebt'
     ]
 }
 
-ALL_MEASURES = reduce(list.__add__, [v for k, v in MEASURES_BY_CATEGORY.items()])
+FA_INDICATORS = []
+FA_INDICATORS_ALIAS = {}
+for indicators in FA_INDICATORS_BY_CATEGORY.values():
+    for indicator in indicators:
+        parts = indicator.split("=>")
+        ind = parts[0].strip()
+        FA_INDICATORS.append(parts[0].strip())
+        if len(parts) == 2:
+            FA_INDICATORS_ALIAS[ind] = parts[1].strip()

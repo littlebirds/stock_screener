@@ -8,6 +8,3 @@ __pycache__
 *.egg-info
 share/*
 etc
-pyvenv.cfg
-
-scripts
