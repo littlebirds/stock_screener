@@ -42,10 +42,9 @@ def feature_augment(df, forward_roc_periods=[5, 15]):
 
 class SpyDailyDataset(Dataset):
 
-  def __init__(self, download=False, roc_periods=[5, 15], transform=None):
+  def __init__(self, download=False, roc_periods=[5, 15]):
     file_path = os.path.join(DATA_DIR, 'sp500_daily_prices.pkl')
-    self.spy_tickers = spy_components()    
-    self.transform = transform
+    self.spy_tickers = spy_components()
 
     if download or not os.path.exists(file_path):
       daily_df = yf.download(self.spy_tickers).swaplevel(axis=1).astype('float32')
@@ -59,30 +58,27 @@ class SpyDailyDataset(Dataset):
 
     # split by ticker name and normalize
     self.tensors_by_ticker = [feature_augment(daily_df[ticker], roc_periods)[1] for ticker in self.spy_tickers]
+    self.feature_labels = []
+    self.prediction_labels = []
     columns = list(feature_augment(daily_df[self.spy_tickers[0]])[0])
-
+    
+    # normalize inputs, but skip columns to be predictd, ie. foward rate of change 
     cat_df = torch.cat(self.tensors_by_ticker, dim=0)
     std, mean = torch.std_mean(cat_df, dim=0)
-    self.std = std.copy()
-    self.mean = mean
-    # normalize inputs, but skip columns to predict 
-    feature_labels = []
-    prediction_labels = []
+    self.std = std.clone().detach()
+    self.mean = mean.clone().detach()
     for i in range(len(columns)):
       name = columns[i]
       if name.startswith('leadingROC'):
         mean[i] = 0.0
         std[i] = 1.0
-        prediction_labels.append(name)
+        self.prediction_labels.append(name)
       else:
-        feature_labels.append(name)
-    self.feature_labels = feature_labels
-    self.prediction_labels = prediction_labels
+        self.feature_labels.append(name)
     self.tensors_by_ticker = [(t - mean) / std for t in self.tensors_by_ticker]    
+    # compute unique samples' number
     self.set_lookback_periods(45)
-    #
     logger.info(f"SPY dataset loaded with {self.total_samples} samples")
-
 
   def set_lookback_periods(self, n: int):
     self.n_lookbehind = n
@@ -98,10 +94,11 @@ class SpyDailyDataset(Dataset):
       raise RuntimeError(f"index {i} exceeds total number of samples({self.total_samples})")
     df_idx = bisect(self.break_points, idx)
     offset = idx - self.break_points[df_idx]
-    logger.info(f"Sample from {self.spy_tickers[df_idx]} historical prices ==>")
     df = self.tensors_by_ticker[df_idx]
     sample = df[offset: offset + self.n_lookbehind]
-    sample = torch.transpose(sample, 0, 1).rename(None)
-    if self.transform:
-      sample = self.transform(sample)
-    return sample
+    # assume that the left most columns are to be predicted
+    n_predicates = len(self.prediction_labels)
+    sample = sample[:, n_predicates:]
+    roc = sample[:, 0:n_predicates]
+    sample = torch.transpose(sample, 0, 1).rename(None)   
+    return {'sample': sample, 'roc': roc}
