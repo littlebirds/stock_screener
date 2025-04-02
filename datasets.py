@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import torch
+import sys
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -92,13 +93,18 @@ class SpyDailyDataset(Dataset):
   def __getitem__(self, idx):
     if idx >= self.total_samples:
       raise RuntimeError(f"index {i} exceeds total number of samples({self.total_samples})")
-    df_idx = bisect(self.break_points, idx)
-    offset = idx - self.break_points[df_idx]
+    df_idx = bisect(self.break_points, sz) -
+    offset = sz - self.break_points[df_idx]
     df = self.tensors_by_ticker[df_idx]
     sample = df[offset: offset + self.n_lookbehind]
     # assume that the left most columns are to be predicted
     n_predicates = len(self.prediction_labels)
     sample = sample[:, n_predicates:]
     roc = sample[:, 0:n_predicates]
-    sample = torch.transpose(sample, 0, 1).rename(None)   
+    sample = torch.transpose(sample, 0, 1).rename(None)
+    if sample.shape[1] != 45:
+      bp = self.break_points
+      logger.info(f"ticker:{self.spy_tickers[df_idx]}, df_idx:{df_idx}, idx:{idx}, offset:{offset}, {bp[df_idx-1]}:{bp[df_idx]}:{bp[df_idx+1]}") 
+      logger.info(f"{roc}")
+      sys.exit(1)
     return {'sample': sample, 'roc': roc}
