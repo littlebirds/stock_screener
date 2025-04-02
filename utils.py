@@ -1,5 +1,6 @@
 import bs4
 import json
+import os
 import requests
 import logging
 import time
@@ -12,6 +13,7 @@ from constants import FA_INDICATORS, FA_INDICATORS_ALIAS
 from db import session, FundmentalInfo
 
 
+DATA_DIR = './data'
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,11 @@ def get_basic_info(ticker: str) -> Optional[Dict[str, Any]]:
     return stock.info
 
 def spy_components() -> List[str]:
+    save_file = os.path.join(DATA_DIR, 'sp500.json')
+    if os.path.exists(save_file):
+        with open(save_file, 'r') as f:
+            return json.load(f)
+    logger.info("Fetching S&P 500 components...")
     result = []
     resp = requests.get('https://stockanalysis.com/list/sp-500-stocks/')
     soup = bs4.BeautifulSoup(resp.text, 'html.parser')
@@ -51,9 +58,11 @@ def spy_components() -> List[str]:
         if not fields:
             continue
         ticker = row.find_all('td')[1].text.upper()
-        if ticker == 'BRK.B' or ticker == 'BF.B':
+        if ticker == 'BRK.B':
             continue
         result.append(ticker.upper())
+    with open(save_file, 'w') as f:
+        json.dump(result, f)
     return result
 
 def toDF(stocks: List[str]) -> pd.DataFrame:
