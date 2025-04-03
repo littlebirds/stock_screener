@@ -20,6 +20,7 @@ class Conv1DNet(nn.Module):
         self.fc2 = nn.Linear(32, 2)
         
     def forward(self, x):
+        # import pdb; pdb.set_trace()
         out = F.max_pool1d(torch.relu(self.bn1(self.conv1(x))), 3)
         out = F.max_pool1d(torch.relu(self.bn2(self.conv2(out))), 3)
         # Flatten the output for the fully connected layer

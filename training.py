@@ -16,7 +16,7 @@ def train_loop(n_epochs, optimizer, model, loss_fn, train_loader):
             loss_train += loss.item()
 
         if epoch ==1 or epoch % 10 == 0:
-            print('{} Epoch {}, training loss {}'.format(datetime.datatime.now(), epoch, loss_train/len(train_loader)))
+            print('{} Epoch {}, training loss {}'.format(datetime.datetime.now(), epoch, loss_train/len(train_loader)))
 
 #
 samples = datasets.SpyDailyDataset()

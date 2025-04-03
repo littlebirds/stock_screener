@@ -10,7 +10,7 @@ import yfinance as yf
 
 from utils import DATA_DIR, spy_components
 from torch.utils.data import Dataset
-from bisect import bisect
+from bisect import bisect_left
  
 
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +38,7 @@ def feature_augment(df, forward_roc_periods=[5, 15]):
   ret.dropna(inplace=True)
   ret = ret.map(math.log)
   # Feature names: hloc, v, v crossed h,l.o,c
-  return ret.columns, torch.tensor(ret.values, dtype=torch.float32, names=(None, 'features'))
+  return ret.columns, torch.tensor(ret.values, dtype=torch.float32)
   
 
 class SpyDailyDataset(Dataset):
@@ -93,18 +93,15 @@ class SpyDailyDataset(Dataset):
   def __getitem__(self, idx):
     if idx >= self.total_samples:
       raise RuntimeError(f"index {i} exceeds total number of samples({self.total_samples})")
-    df_idx = bisect(self.break_points, sz) -
-    offset = sz - self.break_points[df_idx]
+    bp = self.break_points
+    sz = idx + 1
+    df_idx = bisect_left(bp, sz)
+    base = bp[df_idx - 1] if df_idx > 0 else 0
+    offset = sz - base 
     df = self.tensors_by_ticker[df_idx]
-    sample = df[offset: offset + self.n_lookbehind]
+    sample = torch.transpose(df[offset-1 : offset -1 + self.n_lookbehind], 0, 1)
     # assume that the left most columns are to be predicted
     n_predicates = len(self.prediction_labels)
-    sample = sample[:, n_predicates:]
-    roc = sample[:, 0:n_predicates]
-    sample = torch.transpose(sample, 0, 1).rename(None)
-    if sample.shape[1] != 45:
-      bp = self.break_points
-      logger.info(f"ticker:{self.spy_tickers[df_idx]}, df_idx:{df_idx}, idx:{idx}, offset:{offset}, {bp[df_idx-1]}:{bp[df_idx]}:{bp[df_idx+1]}") 
-      logger.info(f"{roc}")
-      sys.exit(1)
-    return {'sample': sample, 'roc': roc}
+    features = sample[ n_predicates : , : ]
+    roc = sample[ :n_predicates, -1]
+    return features, roc
