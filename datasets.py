@@ -17,8 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def feature_augment(df, forward_roc_periods=[5, 15]):
-  # remove where volume is 0
+def feature_augment(df, forward_roc_periods):
   prev_close = df.Close.shift(1)
   prev_vol = df.Volume.shift(1)
   ret = pd.DataFrame()
@@ -31,9 +30,6 @@ def feature_augment(df, forward_roc_periods=[5, 15]):
   ret['close'] = df.Close / prev_close
   ret['vol'] = df.Volume / prev_vol
   # cross features
-  ret['vol_x_high'] = ret['vol'] * ret['high']
-  ret['vol_x_low'] =  ret['vol'] * ret['low']
-  ret['vol_x_open'] =  ret['vol'] * ret['open']
   ret['vol_x_close'] =  ret['vol'] * ret['close']
   ret.dropna(inplace=True)
   ret = ret.map(math.log)
@@ -43,7 +39,7 @@ def feature_augment(df, forward_roc_periods=[5, 15]):
 
 class SpyDailyDataset(Dataset):
 
-  def __init__(self, download=False, roc_periods=[5, 15]):
+  def __init__(self, download=False, roc_periods=[10], device='cpu'):
     file_path = os.path.join(DATA_DIR, 'sp500_daily_prices.pkl')
     self.spy_tickers = spy_components()
 
@@ -58,10 +54,10 @@ class SpyDailyDataset(Dataset):
       daily_df = pd.read_pickle(file_path)
 
     # split by ticker name and normalize
-    self.tensors_by_ticker = [feature_augment(daily_df[ticker], roc_periods)[1] for ticker in self.spy_tickers]
+    self.tensors_by_ticker = [feature_augment(daily_df[ticker], roc_periods)[1].to(device=device) for ticker in self.spy_tickers]
     self.feature_labels = []
     self.prediction_labels = []
-    columns = list(feature_augment(daily_df[self.spy_tickers[0]])[0])
+    columns = list( feature_augment(daily_df[self.spy_tickers[0]], forward_roc_periods=roc_periods )[0])
     
     # normalize inputs, but skip columns to be predictd, ie. foward rate of change 
     cat_df = torch.cat(self.tensors_by_ticker, dim=0)
@@ -78,7 +74,7 @@ class SpyDailyDataset(Dataset):
         self.feature_labels.append(name)
     self.tensors_by_ticker = [(t - mean) / std for t in self.tensors_by_ticker]    
     # compute unique samples' number
-    self.set_lookback_periods(45)
+    self.set_lookback_periods(30)
     logger.info(f"SPY dataset loaded with {self.total_samples} samples")
 
   def set_lookback_periods(self, n: int):
@@ -93,6 +89,7 @@ class SpyDailyDataset(Dataset):
   def __getitem__(self, idx):
     if idx >= self.total_samples:
       raise RuntimeError(f"index {i} exceeds total number of samples({self.total_samples})")
+    
     bp = self.break_points
     sz = idx + 1
     df_idx = bisect_left(bp, sz)
@@ -103,5 +100,5 @@ class SpyDailyDataset(Dataset):
     # assume that the left most columns are to be predicted
     n_predicates = len(self.prediction_labels)
     features = sample[ n_predicates : , : ]
-    roc = sample[ :n_predicates, -1]
+    roc = sample[0:n_predicates, -1]
     return features, roc
