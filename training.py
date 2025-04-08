@@ -9,6 +9,7 @@ import torch
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = torch.device("cuda") 
 BATCH_SIZE=1024
+MODEL_SAVE_PATH = "./data/conv1d.pth"
 
 samples = datasets.SpyDailyDataset(device=device) 
 train_size = int(0.7 * len(samples))
@@ -70,6 +71,6 @@ def train_eval_loop_l2reg(n_epochs, optimizer, model, train_loader):
     
 
 #
-train_eval_loop_l2reg(n_epochs=100, optimizer=optimizer, model=model, train_loader=train_loader)
+#train_eval_loop_l2reg(n_epochs=100, optimizer=optimizer, model=model, train_loader=train_loader)
 # save model
-torch.save(model.state_dict(), "./data/conv1d.pth")
+#torch.save(model.state_dict(), MODEL_SAVE_PATH)
