@@ -3,7 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+
 class Conv1DNet(nn.Module):
+    
+    loss_fn = torch.nn.BCELoss()
+
     def __init__(self, in_chans: int, out_chans: int, n_lookbehind: int):
         super().__init__()
         
@@ -28,6 +32,6 @@ class Conv1DNet(nn.Module):
         
         # Pass through the fully connected layer
         out = torch.tanh(self.fc1(out))
-        out = self.fc2(out)
+        out = torch.sigmoid(self.fc2(out))
         return out
  

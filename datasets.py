@@ -100,5 +100,6 @@ class SpyDailyDataset(Dataset):
     # assume that the left most columns are to be predicted
     n_predicates = len(self.prediction_labels)
     features = sample[ n_predicates : , : ]
-    roc = sample[0:n_predicates, -1]
+    # 
+    roc = (sample[0:n_predicates, -1] > 0.05).float()
     return features, roc

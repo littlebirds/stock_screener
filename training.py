@@ -1,13 +1,15 @@
 import time
 import math
-from torch.utils.data import random_split, DataLoader
 
 import datasets
 import models
 import torch
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cuda") 
+from torch.utils.data import random_split, DataLoader
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda") 
 BATCH_SIZE=1024
 
 samples = datasets.SpyDailyDataset(device=device) 
@@ -27,22 +29,25 @@ model = models.Conv1DNet(
     in_chans=len(samples.feature_labels), 
     out_chans=len(samples.prediction_labels),
     n_lookbehind=samples.n_lookbehind).to(device=device)
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.03, momentum=0.9)
 
-train_loss = torch.nn.MSELoss()
-validate_loss = torch.nn.L1Loss()
+TRAIN_LOSS = torch.nn.BCELoss()
+# validate_loss = torch.nn.L1Loss()
 
 
 def validate(model):
     for name, loader in [("training", train_loader), ("validation", val_loader)]:
+        total = 0
+        correct = 0.0
+        import pdb
         with torch.no_grad():
-            loss_val = 0.0
-            for batch, predicts in val_loader:
+            for batch, predicts in loader:
                 outputs = model(batch)
-                loss = validate_loss(torch.exp(outputs), torch.exp(predicts))
-                loss_val += loss.item()
-            loss_val /= len(loader)
-        print(f'{name} loss: {loss_val}')
+                outputed = outputs.round()
+                total += int(outputed.sum())
+                correct += int(torch.mul(outputed, predicts).sum())
+        if total != 0:   
+            print("Accuracy {}: {:.2f}".format(name, correct/total))
 
 
 def train_eval_loop_l2reg(n_epochs, optimizer, model, train_loader):
@@ -51,7 +56,7 @@ def train_eval_loop_l2reg(n_epochs, optimizer, model, train_loader):
         loss_train = 0.0
         for batch, predicts in train_loader:
             outputs  = model(batch)
-            loss = train_loss(outputs, predicts)
+            loss = model.loss_fn(outputs, predicts)
             # add l2 regularization            
             l2_lambda = 0.01
             l2_norm = sum(p.pow(2).sum() for p in model.parameters())
